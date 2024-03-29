@@ -1,41 +1,60 @@
-function isPrime(number) {
-  if (number <= 1) {
-    return false;
-  }
-  if (number <= 3) {
-    return true;
-  }
+const { isPrime } = require("./src/utils/primes");
+const {
+  loadLastPrimeFromFile,
+  savePrimesToFile,
+} = require("./src/utils/storage");
 
-  if (number % 2 === 0 || number % 3 === 0) {
-    return false;
-  }
+let continueSearching = true;
 
-  let i = 5;
-  while (i * i <= number) {
-    if (number % i === 0 || number % (i + 2) === 0) {
-      return false;
-    }
-    i += 6;
-  }
+function findPrimes(max, lastPrime = 1) {
+  return new Promise((resolve, reject) => {
+    let primes = [];
+    let i = lastPrime;
 
-  return true;
+    const intervalId = setInterval(() => {
+      if (!continueSearching || i > max) {
+        clearInterval(intervalId);
+        resolve(primes);
+      }
+
+      const batchSize = 1000; // Adjust as needed
+      const end = Math.min(i + batchSize, max);
+
+      for (; i <= end; i++) {
+        if (isPrime(i)) {
+          primes.push(i);
+        }
+      }
+
+      console.log(
+        `i: ${i} / ${Number.MAX_SAFE_INTEGER}, Primes: ${primes.length}`
+      ); // Adjust as needed
+    }, 0);
+  });
 }
 
-function findPrimes(max) {
-  const primes = [];
-  for (let i = 1; i <= max; i++) {
-    if (i % 10000000 === 0) {
-      console.log(`i: ${i}, Primes: ${primes.length}`);
-    }
+process.on("SIGINT", () => {
+  console.log("End of line");
+  continueSearching = false;
+});
 
-    if (isPrime(i)) {
-      primes.push(i);
-      // console.log(i); // Print prime numbers as they're found
-    }
+async function main() {
+  let lastPrime = 1;
+  const max = Number.MAX_SAFE_INTEGER;
+  let primeList = [];
+
+  try {
+    lastPrime = loadLastPrimeFromFile();
+    primeList = await findPrimes(max, lastPrime);
+    savePrimesToFile(primeList);
+    console.log(
+      `Saved ${primeList.length} primes up to last found: ${
+        primeList[primeList.length - 1]
+      }`
+    );
+  } catch (error) {
+    console.error("Error:", error);
   }
-  return primes;
 }
 
-const max = Number.MAX_SAFE_INTEGER;
-const primeList = findPrimes(max);
-console.log("List of prime numbers up to", max, ":", primeList);
+main();
